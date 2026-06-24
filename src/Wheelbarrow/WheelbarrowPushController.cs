@@ -27,6 +27,8 @@ namespace Wheelbarrow
         internal const float GroundClearance = 0.06f;
         internal const float WheelRadius = 0.32f;          // matches generate_wheelbarrow_model.py
         internal const float YawOffset = 0f;               // cart-forward vs entity-forward (model faces +Z)
+        internal const float TurnSmoothTime = 0.22f;       // higher = lazier turning
+        internal const float TurnMaxRate = 120f;           // deg/sec cap on how fast the cart can swing
 
         // Hand IK rotation offset applied on top of each grip's orientation (tune if palms look twisted).
         private static readonly Vector3 HandEuler = new Vector3(0f, 0f, 0f);
@@ -41,8 +43,30 @@ namespace Wheelbarrow
         private static Transform handTargetL;
         private static Transform handTargetR;
         private static bool ikApplied;
+        private static bool pendingIKSetup;
+        private static float smoothedYaw;
+        private static float yawVelocity;
+        private static bool hasYaw;
 
         internal static bool IsActive => Current != null;
+
+        // Start pushing using the current (possibly console-tuned) stance values.
+        internal static void Begin(EntityVehicle vehicle)
+        {
+            Begin(vehicle, FrontOffset, HeightLift, TiltDegrees);
+        }
+
+        internal static void Toggle(EntityVehicle vehicle)
+        {
+            if (IsActive && Current == vehicle)
+            {
+                Release();
+            }
+            else
+            {
+                Begin(vehicle);
+            }
+        }
 
         internal static void Begin(EntityVehicle vehicle, float frontOffset, float heightLift, float tiltDegrees)
         {
@@ -61,9 +85,13 @@ namespace Wheelbarrow
             HeightLift = heightLift;
             TiltDegrees = tiltDegrees;
             hasLastPos = false;
+            hasYaw = false;
 
             FreezePhysics(vehicle, true);
-            SetupHandIK(vehicle);
+
+            // Defer hand IK to the first Tick, once the cart is glued in front of the
+            // player, so we can read the grips' real world positions to pick sides.
+            pendingIKSetup = true;
         }
 
         internal static void Release()
@@ -71,6 +99,7 @@ namespace Wheelbarrow
             EntityVehicle vehicle = Current;
             Current = null;
             hasLastPos = false;
+            pendingIKSetup = false;
 
             ClearHandIK();
 
@@ -97,7 +126,21 @@ namespace Wheelbarrow
                 return;
             }
 
-            float yaw = player.rotation.y;
+            // Smoothly chase the player's heading with a capped turn rate, so the cart
+            // swings/trails into corners instead of snapping rigidly to face them.
+            float targetYaw = player.rotation.y;
+            if (!hasYaw)
+            {
+                smoothedYaw = targetYaw;
+                yawVelocity = 0f;
+                hasYaw = true;
+            }
+            else
+            {
+                smoothedYaw = Mathf.SmoothDampAngle(smoothedYaw, targetYaw, ref yawVelocity, TurnSmoothTime, TurnMaxRate, Time.deltaTime);
+            }
+
+            float yaw = smoothedYaw;
             Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
             forward.y = 0f;
             if (forward.sqrMagnitude < 0.0001f)
@@ -142,32 +185,45 @@ namespace Wheelbarrow
 
             SpinWheel(vehicle, target, forward);
 
+            if (pendingIKSetup)
+            {
+                SetupHandIK(vehicle, player);
+                pendingIKSetup = false;
+            }
+
             lastCartPos = target;
             hasLastPos = true;
         }
 
-        private static void SetupHandIK(EntityVehicle vehicle)
+        private static void SetupHandIK(EntityVehicle vehicle, EntityPlayerLocal player)
         {
             ClearHandIK();
 
-            World world = GameManager.Instance != null ? GameManager.Instance.World : null;
-            EntityPlayerLocal player = world != null ? world.GetPrimaryPlayer() : null;
-            Transform model = vehicle.ModelTransform;
+            Transform model = vehicle != null ? vehicle.ModelTransform : null;
             if (player == null || model == null)
             {
                 return;
             }
 
-            Transform gripL = FindContains(model, "Grip_Left");
-            Transform gripR = FindContains(model, "Grip_Right");
-            if (gripL == null || gripR == null)
+            Transform gripA = FindContains(model, "Grip_Left");
+            Transform gripB = FindContains(model, "Grip_Right");
+            if (gripA == null || gripB == null)
             {
                 Log.Warning("[Wheelbarrow] Could not find handle grips for hand IK; pushing without hands attached.");
                 return;
             }
 
-            handTargetL = MakeHandTarget("WB_HandTargetL", gripL);
-            handTargetR = MakeHandTarget("WB_HandTargetR", gripR);
+            // Pick sides from each grip's real position relative to the player's right
+            // vector, so it stays correct even though the FBX export mirrors X (which
+            // makes the "Left"/"Right" mesh names unreliable).
+            Vector3 right = Quaternion.Euler(0f, player.rotation.y, 0f) * Vector3.right;
+            float sideA = Vector3.Dot(gripA.position - player.position, right);
+            float sideB = Vector3.Dot(gripB.position - player.position, right);
+            Transform leftGrip = sideA <= sideB ? gripA : gripB;
+            Transform rightGrip = sideA <= sideB ? gripB : gripA;
+
+            handTargetL = MakeHandTarget("WB_HandTargetL", leftGrip);
+            handTargetR = MakeHandTarget("WB_HandTargetR", rightGrip);
 
             List<IKController.Target> targets = new List<IKController.Target>
             {

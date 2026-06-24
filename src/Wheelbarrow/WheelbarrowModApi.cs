@@ -1,3 +1,4 @@
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Scripting;
 
@@ -8,6 +9,8 @@ namespace Wheelbarrow
     {
         public void InitMod(Mod _modInstance)
         {
+            new Harmony("com.pathof7d2d.wheelbarrow").PatchAll(typeof(WheelbarrowModApi).Assembly);
+
             if (GameObject.Find("WheelbarrowVisualRepair") == null)
             {
                 GameObject repairObject = new GameObject("WheelbarrowVisualRepair");
@@ -16,7 +19,7 @@ namespace Wheelbarrow
                 repairObject.AddComponent<WheelbarrowPushBehaviour>();
             }
 
-            Log.Out("[Wheelbarrow] Loaded. 'wb' spawns a test cart; 'wb push' / 'wb drop' toggle push mode.");
+            Log.Out("[Wheelbarrow] Loaded. Press the interact key on a wheelbarrow to push it.");
         }
     }
 }

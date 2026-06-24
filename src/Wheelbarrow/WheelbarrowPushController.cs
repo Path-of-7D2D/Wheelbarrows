@@ -31,7 +31,7 @@ namespace Wheelbarrow
         internal const float TurnMaxRate = 120f;           // deg/sec cap on how fast the cart can swing
         internal const float MaxTurnOffset = 50f;          // nose may lag at most this far from your facing
         internal const float ToggleGuard = 0.25f;          // debounce so one keypress can't grab+drop
-        internal const float ParkSideLeanDegrees = 11f;    // left/right lean applied when the cart is dropped
+        internal const float ReleaseRollVelocity = 0.9f;   // rad/sec roll nudge after releasing physics
 
         // Hand IK rotation offset applied on top of each grip's orientation (tune if palms look twisted).
         private static readonly Vector3 HandEuler = new Vector3(0f, 0f, 0f);
@@ -50,6 +50,8 @@ namespace Wheelbarrow
         private static float smoothedYaw;
         private static float yawVelocity;
         private static bool hasYaw;
+        private static float lastPushYaw;
+        private static bool hasLastPushYaw;
         private static float lastBeginTime = -10f;
         private static float lastReleaseTime = -10f;
 
@@ -147,17 +149,21 @@ namespace Wheelbarrow
         internal static void Release()
         {
             EntityVehicle vehicle = Current;
+            float releaseYaw = hasLastPushYaw ? lastPushYaw : GetVehicleYaw(vehicle);
             Current = null;
             hasLastPos = false;
             pendingIKSetup = false;
+            hasLastPushYaw = false;
             lastReleaseTime = Time.unscaledTime;
 
             ClearHandIK();
+            RestorePlayerHands();
 
             if (vehicle != null)
             {
-                ParkReleasedVehicle(vehicle);
+                PrepareReleasedVehicle(vehicle, releaseYaw);
                 FreezePhysics(vehicle, false);
+                NudgeReleasedVehicle(vehicle);
             }
         }
 
@@ -202,6 +208,9 @@ namespace Wheelbarrow
             }
 
             float yaw = smoothedYaw;
+            lastPushYaw = yaw;
+            hasLastPushYaw = true;
+
             Vector3 forward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
             forward.y = 0f;
             if (forward.sqrMagnitude < 0.0001f)
@@ -392,7 +401,7 @@ namespace Wheelbarrow
             }
         }
 
-        private static void ParkReleasedVehicle(EntityVehicle vehicle)
+        private static void PrepareReleasedVehicle(EntityVehicle vehicle, float yaw)
         {
             if (vehicle == null || vehicle.IsDead())
             {
@@ -402,10 +411,8 @@ namespace Wheelbarrow
             Vector3 parkedPosition = vehicle.position;
             SnapToGround(ref parkedPosition);
 
-            float yaw = GetVehicleYaw(vehicle);
-            float lean = GetParkLeanSign(vehicle) * ParkSideLeanDegrees;
             Quaternion parkedRotation = Quaternion.Euler(0f, yaw + YawOffset, 0f) *
-                Quaternion.Euler(0f, 0f, lean);
+                Quaternion.Euler(TiltDegrees, 0f, 0f);
             Vector3 unityPosition = parkedPosition - Origin.position;
 
             vehicle.SetPosition(parkedPosition, false);
@@ -434,17 +441,58 @@ namespace Wheelbarrow
             }
         }
 
+        private static void NudgeReleasedVehicle(EntityVehicle vehicle)
+        {
+            Rigidbody rb = vehicle != null ? vehicle.vehicleRB : null;
+            if (rb == null)
+            {
+                return;
+            }
+
+            float rollSign = GetReleaseRollSign(vehicle);
+            Vector3 rollAxis = rb.rotation * Vector3.forward;
+            rb.angularVelocity = rollAxis * rollSign * ReleaseRollVelocity;
+            rb.WakeUp();
+        }
+
+        private static void RestorePlayerHands()
+        {
+            World world = GameManager.Instance != null ? GameManager.Instance.World : null;
+            EntityPlayerLocal player = world != null ? world.GetPrimaryPlayer() : null;
+            if (player == null)
+            {
+                return;
+            }
+
+            player.HolsterWeapon(false);
+            if (player.bFirstPersonView)
+            {
+                player.ShowHoldingItemLayer(true);
+            }
+
+            if (player.inventory != null)
+            {
+                player.inventory.ShowRightHand(true);
+                player.inventory.SetIsFinishedSwitchingHeldItem();
+            }
+        }
+
         private static float GetVehicleYaw(EntityVehicle vehicle)
         {
-            if (vehicle.RootTransform != null)
+            if (vehicle == null)
             {
-                return vehicle.RootTransform.rotation.eulerAngles.y;
+                return 0f;
+            }
+
+            if (hasLastPushYaw)
+            {
+                return lastPushYaw;
             }
 
             return vehicle.rotation.y;
         }
 
-        private static float GetParkLeanSign(EntityVehicle vehicle)
+        private static float GetReleaseRollSign(EntityVehicle vehicle)
         {
             return (vehicle.entityId & 1) == 0 ? 1f : -1f;
         }

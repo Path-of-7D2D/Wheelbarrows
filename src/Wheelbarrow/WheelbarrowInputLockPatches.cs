@@ -5,8 +5,8 @@ namespace Wheelbarrow
 {
     /// <summary>
     /// While the local player is pushing a wheelbarrow, restrict their input the way
-    /// mounting a vehicle does: no jumping, no swapping the held item, no attacking.
-    /// They keep normal walking/look so they can steer the cart on foot.
+    /// mounting a vehicle does: no jumping and no attacking. Slot switching drops
+    /// the cart first, then lets vanilla inventory code complete normally.
     /// </summary>
     internal static class PushLock
     {
@@ -50,8 +50,8 @@ namespace Wheelbarrow
         }
     }
 
-    // Toolbelt / held-item switching: SetHoldingItemIdx is the funnel for "what's in
-    // your hands", so blocking it stops number-key/scroll equips while pushing.
+    // Toolbelt / held-item switching: release the cart and let vanilla complete the
+    // slot transition. Blocking this method can strand the holster/unholster state.
     [Preserve]
     [HarmonyPatch(typeof(Inventory), nameof(Inventory.SetHoldingItemIdx))]
     internal static class Push_BlockHold_Patch
@@ -60,7 +60,12 @@ namespace Wheelbarrow
         private static bool Prefix(Inventory __instance)
         {
             EntityPlayerLocal player = __instance != null ? __instance.entity as EntityPlayerLocal : null;
-            return !PushLock.LocksLocalPlayer(player);
+            if (PushLock.LocksLocalPlayer(player))
+            {
+                WheelbarrowPush.Release();
+            }
+
+            return true;
         }
     }
 
@@ -72,7 +77,12 @@ namespace Wheelbarrow
         private static bool Prefix(Inventory __instance)
         {
             EntityPlayerLocal player = __instance != null ? __instance.entity as EntityPlayerLocal : null;
-            return !PushLock.LocksLocalPlayer(player);
+            if (PushLock.LocksLocalPlayer(player))
+            {
+                WheelbarrowPush.Release();
+            }
+
+            return true;
         }
     }
 }

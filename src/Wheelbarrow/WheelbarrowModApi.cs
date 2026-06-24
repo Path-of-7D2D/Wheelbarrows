@@ -13,9 +13,10 @@ namespace Wheelbarrow
                 GameObject repairObject = new GameObject("WheelbarrowVisualRepair");
                 Object.DontDestroyOnLoad(repairObject);
                 repairObject.AddComponent<WheelbarrowVisualRepairBehaviour>();
+                repairObject.AddComponent<WheelbarrowPushBehaviour>();
             }
 
-            Log.Out("[Wheelbarrow] Loaded. Use 'wb' to spawn a test wheelbarrow near you.");
+            Log.Out("[Wheelbarrow] Loaded. 'wb' spawns a test cart; 'wb push' / 'wb drop' toggle push mode.");
         }
     }
 }

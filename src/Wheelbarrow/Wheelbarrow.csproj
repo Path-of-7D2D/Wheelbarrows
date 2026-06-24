@@ -44,6 +44,10 @@
       <HintPath>$(Managed7D2D)\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>$(Managed7D2D)\UnityEngine.AnimationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
       <HintPath>$(Managed7D2D)\UnityEngine.PhysicsModule.dll</HintPath>
       <Private>false</Private>

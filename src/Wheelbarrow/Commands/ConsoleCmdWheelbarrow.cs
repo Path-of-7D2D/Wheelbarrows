@@ -31,16 +31,19 @@ namespace Wheelbarrow.Commands
         public override string getHelp()
         {
             return "Usage:\n" +
-                "  wb [distance]\n" +
+                "  wb [distance]      spawn a test cart\n" +
+                "  wb push [offset] [lift] [tilt]   push nearest cart (walk-behind)\n" +
+                "  wb drop            release the pushed cart\n" +
                 "  wb cleanup\n" +
                 "  wb debug\n" +
                 "  wheelbarrow [distance]\n" +
                 "\n" +
                 "Examples:\n" +
                 "  wb\n" +
-                "  wb 5\n" +
-                "  wb cleanup\n" +
-                "  wb debug";
+                "  wb push\n" +
+                "  wb push 1.6 0.2 15\n" +
+                "  wb drop\n" +
+                "  wb cleanup";
         }
 
         public override void Execute(List<string> _params, CommandSenderInfo _senderInfo)
@@ -60,6 +63,27 @@ namespace Wheelbarrow.Commands
             if (_params.Count > 0 && IsSubcommand(_params[0], "debug"))
             {
                 DebugWheelbarrows();
+                return;
+            }
+
+            if (_params.Count > 0 && (IsSubcommand(_params[0], "push") || IsSubcommand(_params[0], "grab")))
+            {
+                PushNearest(_senderInfo, _params);
+                return;
+            }
+
+            if (_params.Count > 0 && (IsSubcommand(_params[0], "drop") || IsSubcommand(_params[0], "release") || IsSubcommand(_params[0], "park")))
+            {
+                if (WheelbarrowPush.IsActive)
+                {
+                    WheelbarrowPush.Release();
+                    Output("Dropped the wheelbarrow.");
+                }
+                else
+                {
+                    Output("No wheelbarrow is being pushed.");
+                }
+
                 return;
             }
 
@@ -238,6 +262,70 @@ namespace Wheelbarrow.Commands
             }
 
             Output("Debugged " + wheelbarrows.Count + " active wheelbarrow(s); renderers found on " + repaired + ".");
+        }
+
+        private void PushNearest(CommandSenderInfo senderInfo, List<string> _params)
+        {
+            EntityPlayer player = GetSenderPlayer(senderInfo);
+            if (player == null)
+            {
+                Output("No player entity is available. Run this from an in-game client console.");
+                return;
+            }
+
+            float offset = WheelbarrowPush.DefaultFrontOffset;
+            if (_params.Count > 1 && !float.TryParse(_params[1], out offset))
+            {
+                Output("Invalid offset: " + _params[1]);
+                return;
+            }
+
+            float lift = WheelbarrowPush.DefaultHeightLift;
+            if (_params.Count > 2 && !float.TryParse(_params[2], out lift))
+            {
+                Output("Invalid lift: " + _params[2]);
+                return;
+            }
+
+            float tilt = WheelbarrowPush.DefaultTiltDegrees;
+            if (_params.Count > 3 && !float.TryParse(_params[3], out tilt))
+            {
+                Output("Invalid tilt: " + _params[3]);
+                return;
+            }
+
+            offset = Mathf.Clamp(offset, 0.6f, 3f);
+            lift = Mathf.Clamp(lift, -0.2f, 1.2f);
+            tilt = Mathf.Clamp(tilt, 0f, 45f);
+
+            List<EntityVehicle> wheelbarrows = WheelbarrowVisuals.GetActiveWheelbarrows();
+            EntityVehicle nearest = null;
+            float nearestSq = float.MaxValue;
+            for (int i = 0; i < wheelbarrows.Count; i++)
+            {
+                EntityVehicle candidate = wheelbarrows[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                float distSq = (candidate.position - player.position).sqrMagnitude;
+                if (distSq < nearestSq)
+                {
+                    nearestSq = distSq;
+                    nearest = candidate;
+                }
+            }
+
+            if (nearest == null)
+            {
+                Output("No wheelbarrow found nearby. Spawn one with 'wb' first.");
+                return;
+            }
+
+            WheelbarrowPush.Begin(nearest, offset, lift, tilt);
+            Output("Now pushing (offset " + offset.ToString("0.0") + "m, lift " + lift.ToString("0.00") +
+                "m, tilt " + tilt.ToString("0") + "°). Walk around; 'wb drop' to release.");
         }
 
         private static EntityPlayer GetSenderPlayer(CommandSenderInfo senderInfo)

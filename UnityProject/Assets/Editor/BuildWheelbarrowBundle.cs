@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditorInternal;
@@ -8,6 +9,8 @@ public static class BuildWheelbarrowBundle
 {
     private const string ModelPath = "Assets/Wheelbarrow/Models/Wheelbarrow.fbx";
     private const string PrefabPath = "Assets/Wheelbarrow/Prefabs/WheelbarrowPrefab.prefab";
+    private const string TexturesDir = "Assets/Wheelbarrow/Textures";
+    private const string MaterialsDir = "Assets/Wheelbarrow/Materials";
     private const string BundleName = "wheelbarrow.unity3d";
     private const float VisualScale = 80f;
 
@@ -190,6 +193,7 @@ public static class BuildWheelbarrowBundle
         }
 
         EnsureVehicleTransforms(mesh.transform);
+        ApplyRustMaterials(mesh.transform);
         RemoveRootCollider(instance);
         RemoveRootCollider(modelRoot);
         RemoveRootCollider(mesh);
@@ -224,6 +228,151 @@ public static class BuildWheelbarrowBundle
             importer.globalScale = VisualScale;
             importer.SaveAndReimport();
         }
+    }
+
+    // Replaces the FBX's flat placeholder materials with weathered/rusted Standard
+    // materials built from tools/generate_textures.py output, matched by original name.
+    private static void ApplyRustMaterials(Transform meshRoot)
+    {
+        Dictionary<string, Material> map = BuildRustMaterials();
+        if (map.Count == 0)
+        {
+            Debug.LogWarning("Rust textures not found; keeping placeholder materials. Run tools/generate_textures.py.");
+            return;
+        }
+
+        Renderer[] renderers = meshRoot.GetComponentsInChildren<Renderer>(true);
+        foreach (Renderer renderer in renderers)
+        {
+            Material[] shared = renderer.sharedMaterials;
+            bool changed = false;
+            for (int i = 0; i < shared.Length; i++)
+            {
+                if (shared[i] == null)
+                {
+                    continue;
+                }
+
+                string key = shared[i].name.Replace(" (Instance)", string.Empty).Trim();
+                if (map.TryGetValue(key, out Material replacement))
+                {
+                    shared[i] = replacement;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                renderer.sharedMaterials = shared;
+            }
+        }
+
+        AssetDatabase.SaveAssets();
+    }
+
+    private static Dictionary<string, Material> BuildRustMaterials()
+    {
+        var map = new Dictionary<string, Material>();
+
+        Texture2D metal = ImportTexture("wb_metal_albedo.png", isNormal: false);
+        Texture2D red = ImportTexture("wb_red_albedo.png", isNormal: false);
+        Texture2D wood = ImportTexture("wb_wood_albedo.png", isNormal: false);
+        Texture2D rubber = ImportTexture("wb_rubber_albedo.png", isNormal: false);
+        Texture2D normal = ImportTexture("wb_metal_normal.png", isNormal: true);
+
+        if (metal == null || red == null)
+        {
+            return map;
+        }
+
+        if (!AssetDatabase.IsValidFolder(MaterialsDir))
+        {
+            AssetDatabase.CreateFolder("Assets/Wheelbarrow", "Materials");
+        }
+
+        // original FBX material name -> rusted replacement
+        map["dark_worn_metal"] = MakeMaterial("WB_Metal", metal, normal, 0.30f, 0.30f, 1.00f);
+        map["weathered_red_metal"] = MakeMaterial("WB_Red", red, normal, 0.12f, 0.34f, 1.00f);
+        map["dark_red_worn_edges"] = MakeMaterial("WB_RedDark", red, normal, 0.18f, 0.24f, 0.78f);
+        map["matte_black_rubber"] = MakeMaterial("WB_Rubber", rubber, null, 0.00f, 0.16f, 1.00f);
+        map["worn_handle_wood"] = MakeMaterial("WB_Wood", wood, null, 0.00f, 0.20f, 1.00f);
+        return map;
+    }
+
+    private static Texture2D ImportTexture(string fileName, bool isNormal)
+    {
+        string path = TexturesDir + "/" + fileName;
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer == null)
+        {
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        }
+
+        if (importer != null)
+        {
+            bool dirty = false;
+            TextureImporterType wanted = isNormal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            if (importer.textureType != wanted)
+            {
+                importer.textureType = wanted;
+                dirty = true;
+            }
+
+            if (!isNormal && !importer.sRGBTexture)
+            {
+                importer.sRGBTexture = true;
+                dirty = true;
+            }
+
+            if (importer.wrapMode != TextureWrapMode.Repeat)
+            {
+                importer.wrapMode = TextureWrapMode.Repeat;
+                dirty = true;
+            }
+
+            if (dirty)
+            {
+                importer.SaveAndReimport();
+            }
+        }
+
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
+
+    private static Material MakeMaterial(string name, Texture2D albedo, Texture2D normal, float metallic, float smoothness, float tint)
+    {
+        string path = MaterialsDir + "/" + name + ".mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null)
+        {
+            material = new Material(Shader.Find("Standard"));
+            AssetDatabase.CreateAsset(material, path);
+        }
+        else
+        {
+            material.shader = Shader.Find("Standard");
+        }
+
+        material.mainTexture = albedo;
+        material.SetColor("_Color", new Color(tint, tint, tint, 1f));
+        material.SetFloat("_Metallic", metallic);
+        material.SetFloat("_Glossiness", smoothness);
+
+        if (normal != null)
+        {
+            material.EnableKeyword("_NORMALMAP");
+            material.SetTexture("_BumpMap", normal);
+            material.SetFloat("_BumpScale", 1f);
+        }
+
+        EditorUtility.SetDirty(material);
+        return material;
     }
 
     private static Bounds GetCombinedRendererBounds(Transform root, out int rendererCount)

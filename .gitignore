@@ -1,0 +1,26 @@
+# Unity generated state
+UnityProject/Library/
+UnityProject/Logs/
+UnityProject/Temp/
+UnityProject/Obj/
+UnityProject/Build/
+UnityProject/Builds/
+UnityProject/UserSettings/
+UnityProject/*.log
+
+# Blender backup files
+*.blend1
+*.blend2
+
+# .NET generated state
+src/**/bin/
+src/**/obj/
+
+# Local editor and OS files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini

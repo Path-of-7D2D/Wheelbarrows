@@ -10,7 +10,10 @@ namespace Wheelbarrow
     /// </summary>
     internal static class PushLock
     {
-        internal static bool LocksLocalPlayer => WheelbarrowPush.IsActive;
+        internal static bool LocksLocalPlayer(EntityPlayerLocal player)
+        {
+            return player != null && WheelbarrowPush.ShouldLockLocalPlayer(player);
+        }
     }
 
     // Jumping: MoveByInput consumes movementInput.jump — clear it before it's read.
@@ -21,7 +24,7 @@ namespace Wheelbarrow
         [Preserve]
         private static void Prefix(EntityPlayerLocal __instance)
         {
-            if (PushLock.LocksLocalPlayer && __instance != null && __instance.movementInput != null)
+            if (PushLock.LocksLocalPlayer(__instance) && __instance.movementInput != null)
             {
                 __instance.movementInput.jump = false;
             }
@@ -36,7 +39,8 @@ namespace Wheelbarrow
         [Preserve]
         private static bool Prefix(EntityAlive __instance, ref bool __result)
         {
-            if (PushLock.LocksLocalPlayer && __instance is EntityPlayerLocal)
+            EntityPlayerLocal player = __instance as EntityPlayerLocal;
+            if (PushLock.LocksLocalPlayer(player))
             {
                 __result = false;
                 return false; // skip the attack
@@ -55,7 +59,8 @@ namespace Wheelbarrow
         [Preserve]
         private static bool Prefix(Inventory __instance)
         {
-            return !(PushLock.LocksLocalPlayer && __instance != null && __instance.entity is EntityPlayerLocal);
+            EntityPlayerLocal player = __instance != null ? __instance.entity as EntityPlayerLocal : null;
+            return !PushLock.LocksLocalPlayer(player);
         }
     }
 
@@ -66,7 +71,8 @@ namespace Wheelbarrow
         [Preserve]
         private static bool Prefix(Inventory __instance)
         {
-            return !(PushLock.LocksLocalPlayer && __instance != null && __instance.entity is EntityPlayerLocal);
+            EntityPlayerLocal player = __instance != null ? __instance.entity as EntityPlayerLocal : null;
+            return !PushLock.LocksLocalPlayer(player);
         }
     }
 }

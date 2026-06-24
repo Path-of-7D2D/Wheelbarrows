@@ -29,6 +29,9 @@ namespace Wheelbarrow
         internal const float YawOffset = 0f;               // cart-forward vs entity-forward (model faces +Z)
         internal const float TurnSmoothTime = 0.22f;       // higher = lazier turning
         internal const float TurnMaxRate = 120f;           // deg/sec cap on how fast the cart can swing
+        internal const float MaxTurnOffset = 50f;          // nose may lag at most this far from your facing
+        internal const float ToggleGuard = 0.25f;          // debounce so one keypress can't grab+drop
+        internal const float ParkSideLeanDegrees = 11f;    // left/right lean applied when the cart is dropped
 
         // Hand IK rotation offset applied on top of each grip's orientation (tune if palms look twisted).
         private static readonly Vector3 HandEuler = new Vector3(0f, 0f, 0f);
@@ -47,8 +50,24 @@ namespace Wheelbarrow
         private static float smoothedYaw;
         private static float yawVelocity;
         private static bool hasYaw;
+        private static float lastBeginTime = -10f;
+        private static float lastReleaseTime = -10f;
 
         internal static bool IsActive => Current != null;
+
+        internal static bool IsPushing(EntityVehicle vehicle)
+        {
+            return Current != null && vehicle != null && Current.entityId == vehicle.entityId;
+        }
+
+        // True briefly after a drop, so the same keypress that dropped the cart can't
+        // immediately re-grab it via the interact handler.
+        internal static bool JustReleased => Time.unscaledTime - lastReleaseTime < ToggleGuard;
+
+        internal static bool ShouldLockLocalPlayer(EntityPlayerLocal player)
+        {
+            return ValidateActiveState(player, true);
+        }
 
         // Start pushing using the current (possibly console-tuned) stance values.
         internal static void Begin(EntityVehicle vehicle)
@@ -65,6 +84,36 @@ namespace Wheelbarrow
             else
             {
                 Begin(vehicle);
+            }
+        }
+
+        // While pushing, dropping is driven by the interact key directly (the cart sits
+        // low/in front and is awkward to look-focus), not by entity activation.
+        internal static void HandleReleaseInput()
+        {
+            if (!IsActive || Time.unscaledTime - lastBeginTime < ToggleGuard)
+            {
+                return;
+            }
+
+            World world = GameManager.Instance != null ? GameManager.Instance.World : null;
+            EntityPlayerLocal player = world != null ? world.GetPrimaryPlayer() : null;
+            if (!ValidateActiveState(player, true))
+            {
+                return;
+            }
+
+            PlayerActionsLocal input = player != null ? player.playerInput : null;
+            if (input == null)
+            {
+                return;
+            }
+
+            bool pressed = (input.Activate != null && input.Activate.WasPressed) ||
+                (input.PermanentActions != null && input.PermanentActions.Activate != null && input.PermanentActions.Activate.WasPressed);
+            if (pressed)
+            {
+                Release();
             }
         }
 
@@ -86,6 +135,7 @@ namespace Wheelbarrow
             TiltDegrees = tiltDegrees;
             hasLastPos = false;
             hasYaw = false;
+            lastBeginTime = Time.unscaledTime;
 
             FreezePhysics(vehicle, true);
 
@@ -100,11 +150,13 @@ namespace Wheelbarrow
             Current = null;
             hasLastPos = false;
             pendingIKSetup = false;
+            lastReleaseTime = Time.unscaledTime;
 
             ClearHandIK();
 
             if (vehicle != null)
             {
+                ParkReleasedVehicle(vehicle);
                 FreezePhysics(vehicle, false);
             }
         }
@@ -113,15 +165,15 @@ namespace Wheelbarrow
         internal static void Tick()
         {
             EntityVehicle vehicle = Current;
-            if (vehicle == null || vehicle.IsDead())
+            World world = GameManager.Instance != null ? GameManager.Instance.World : null;
+            EntityPlayerLocal player = world != null ? world.GetPrimaryPlayer() : null;
+            if (!ValidateActiveState(player, true))
             {
-                Release();
                 return;
             }
 
-            World world = GameManager.Instance != null ? GameManager.Instance.World : null;
-            EntityPlayerLocal player = world != null ? world.GetPrimaryPlayer() : null;
-            if (player == null)
+            vehicle = Current;
+            if (vehicle == null)
             {
                 return;
             }
@@ -138,6 +190,15 @@ namespace Wheelbarrow
             else
             {
                 smoothedYaw = Mathf.SmoothDampAngle(smoothedYaw, targetYaw, ref yawVelocity, TurnSmoothTime, TurnMaxRate, Time.deltaTime);
+            }
+
+            // Hard cap how far the nose may lag from your facing, so it can't be whipped
+            // around — it stays within MaxTurnOffset degrees and drags along past that.
+            float offset = Mathf.DeltaAngle(targetYaw, smoothedYaw);
+            if (Mathf.Abs(offset) > MaxTurnOffset)
+            {
+                smoothedYaw = targetYaw + Mathf.Sign(offset) * MaxTurnOffset;
+                yawVelocity = 0f;
             }
 
             float yaw = smoothedYaw;
@@ -310,6 +371,12 @@ namespace Wheelbarrow
                     rb.velocity = Vector3.zero;
                     rb.angularVelocity = Vector3.zero;
                 }
+                else
+                {
+                    rb.velocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                    rb.WakeUp();
+                }
             }
 
             // While pushing, drop the solid body collider so the cart can't shove or
@@ -323,6 +390,63 @@ namespace Wheelbarrow
                     box.enabled = !frozen;
                 }
             }
+        }
+
+        private static void ParkReleasedVehicle(EntityVehicle vehicle)
+        {
+            if (vehicle == null || vehicle.IsDead())
+            {
+                return;
+            }
+
+            Vector3 parkedPosition = vehicle.position;
+            SnapToGround(ref parkedPosition);
+
+            float yaw = GetVehicleYaw(vehicle);
+            float lean = GetParkLeanSign(vehicle) * ParkSideLeanDegrees;
+            Quaternion parkedRotation = Quaternion.Euler(0f, yaw + YawOffset, 0f) *
+                Quaternion.Euler(0f, 0f, lean);
+            Vector3 unityPosition = parkedPosition - Origin.position;
+
+            vehicle.SetPosition(parkedPosition, false);
+            vehicle.SetRotation(parkedRotation.eulerAngles);
+
+            Rigidbody rb = vehicle.vehicleRB;
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.position = unityPosition;
+                rb.rotation = parkedRotation;
+            }
+
+            Transform model = vehicle.ModelTransform;
+            if (model != null)
+            {
+                model.SetPositionAndRotation(unityPosition, parkedRotation);
+            }
+
+            Transform physics = vehicle.PhysicsTransform;
+            if (physics != null)
+            {
+                physics.SetPositionAndRotation(unityPosition, parkedRotation);
+            }
+        }
+
+        private static float GetVehicleYaw(EntityVehicle vehicle)
+        {
+            if (vehicle.RootTransform != null)
+            {
+                return vehicle.RootTransform.rotation.eulerAngles.y;
+            }
+
+            return vehicle.rotation.y;
+        }
+
+        private static float GetParkLeanSign(EntityVehicle vehicle)
+        {
+            return (vehicle.entityId & 1) == 0 ? 1f : -1f;
         }
 
         private static void SnapToGround(ref Vector3 position)
@@ -348,11 +472,112 @@ namespace Wheelbarrow
 
             return null;
         }
+
+        private static bool ValidateActiveState(EntityPlayerLocal player, bool releaseIfInvalid)
+        {
+            EntityVehicle vehicle = Current;
+            if (vehicle == null)
+            {
+                return false;
+            }
+
+            string reason = GetInvalidActiveStateReason(vehicle, player);
+            if (reason == null)
+            {
+                return true;
+            }
+
+            if (releaseIfInvalid)
+            {
+                Log.Out("[Wheelbarrow] Releasing stale push lock: " + reason);
+                Release();
+            }
+
+            return false;
+        }
+
+        private static string GetInvalidActiveStateReason(EntityVehicle vehicle, EntityPlayerLocal player)
+        {
+            if (vehicle == null)
+            {
+                return "missing vehicle";
+            }
+
+            if (vehicle.IsDead())
+            {
+                return "vehicle is dead";
+            }
+
+            if (vehicle.RootTransform == null || vehicle.ModelTransform == null || vehicle.PhysicsTransform == null)
+            {
+                return "vehicle transforms are missing";
+            }
+
+            World world = GameManager.Instance != null ? GameManager.Instance.World : null;
+            if (world == null)
+            {
+                return "world is unavailable";
+            }
+
+            if (player == null)
+            {
+                return "local player is unavailable";
+            }
+
+            if (player.IsDead())
+            {
+                return "local player is dead";
+            }
+
+            EntityPlayerLocal primaryPlayer = world.GetPrimaryPlayer();
+            if (primaryPlayer == null || primaryPlayer.entityId != player.entityId)
+            {
+                return "input player is not the primary local player";
+            }
+
+            VehicleManager manager = VehicleManager.Instance;
+            if (manager == null)
+            {
+                return "vehicle manager is unavailable";
+            }
+
+            bool activeVehicleFound = false;
+            for (int i = 0; i < manager.vehiclesActive.Count; i++)
+            {
+                EntityVehicle activeVehicle = manager.vehiclesActive[i];
+                if (activeVehicle != null && activeVehicle.entityId == vehicle.entityId)
+                {
+                    activeVehicleFound = true;
+                    break;
+                }
+            }
+
+            if (!activeVehicleFound)
+            {
+                return "vehicle is no longer active";
+            }
+
+            float maxDistance = Mathf.Max(FrontOffset + 4f, 8f);
+            Vector3 delta = vehicle.position - player.position;
+            delta.y = 0f;
+            if (delta.sqrMagnitude > maxDistance * maxDistance)
+            {
+                return "player moved too far from vehicle";
+            }
+
+            return null;
+        }
     }
 
     [Preserve]
     internal sealed class WheelbarrowPushBehaviour : MonoBehaviour
     {
+        private void Update()
+        {
+            // Interact key drops the cart while pushing.
+            WheelbarrowPush.HandleReleaseInput();
+        }
+
         private void LateUpdate()
         {
             if (WheelbarrowPush.IsActive)

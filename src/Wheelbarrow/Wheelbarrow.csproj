@@ -36,6 +36,10 @@
       <HintPath>$(Managed7D2D)\Assembly-CSharp-firstpass.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="InControl">
+      <HintPath>$(Managed7D2D)\InControl.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="LogLibrary">
       <HintPath>$(Managed7D2D)\LogLibrary.dll</HintPath>
       <Private>false</Private>

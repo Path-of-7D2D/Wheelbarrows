@@ -30,11 +30,83 @@ namespace Wheelbarrow
             string commandId = _command.commandId;
             if (commandId != "ride" && commandId != "drive")
             {
+                if (WheelbarrowPush.IsPushing(__instance))
+                {
+                    WheelbarrowPush.Release();
+                }
+
                 return true; // storage / take / repair / lock etc. behave normally
             }
 
-            WheelbarrowPush.Toggle(__instance);
-            return false; // skip mounting
+            if (WheelbarrowPush.IsPushing(__instance))
+            {
+                WheelbarrowPush.Release();
+                return false;
+            }
+
+            // Interacting starts pushing. Dropping is handled by the interact key in the
+            // push behaviour (the cart is awkward to look-focus once it's in front of you),
+            // so this handler is start-only and just consumes the activation otherwise.
+            if (!WheelbarrowPush.IsActive && !WheelbarrowPush.JustReleased)
+            {
+                WheelbarrowPush.Begin(__instance);
+            }
+
+            return false; // never mount
+        }
+    }
+
+    [Preserve]
+    [HarmonyPatch(typeof(EntityVehicle), nameof(EntityVehicle.GetActivationText))]
+    internal static class EntityVehicleActivationTextPatch
+    {
+        [Preserve]
+        private static void Postfix(EntityVehicle __instance, ref string __result)
+        {
+            if (__instance == null)
+            {
+                return;
+            }
+
+            int wheelbarrowId = EntityClass.GetId(WheelbarrowVisuals.EntityName);
+            if (!WheelbarrowVisuals.IsWheelbarrowEntityClass(__instance.entityClass, wheelbarrowId))
+            {
+                return;
+            }
+
+            EntityPlayerLocal player = GameManager.Instance?.World?.GetPrimaryPlayer();
+            if (player == null)
+            {
+                return;
+            }
+
+            string binding = player.playerInput.Activate.GetBindingXuiMarkupString() +
+                player.playerInput.PermanentActions.Activate.GetBindingXuiMarkupString();
+            string entityName = GetWheelbarrowDisplayName();
+            string template = Localization.Get("wheelbarrowTooltipPush");
+            if (string.IsNullOrEmpty(template) || template == "wheelbarrowTooltipPush")
+            {
+                template = "{0} to Push {1}";
+            }
+
+            string text = string.Format(template, binding, entityName);
+            if (__instance.IsLockedForLocalPlayer(player))
+            {
+                text = Localization.Get("ttLocked") + "\n" + text;
+            }
+
+            __result = text;
+        }
+
+        private static string GetWheelbarrowDisplayName()
+        {
+            string entityName = Localization.Get(WheelbarrowVisuals.EntityName);
+            if (string.IsNullOrEmpty(entityName) || entityName == WheelbarrowVisuals.EntityName)
+            {
+                return "Wheelbarrow";
+            }
+
+            return entityName;
         }
     }
 }

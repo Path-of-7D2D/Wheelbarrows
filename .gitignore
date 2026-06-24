@@ -11,6 +11,8 @@ UnityProject/*.log
 # Blender backup files
 *.blend1
 *.blend2
+*.blend1.meta
+*.blend2.meta
 
 # .NET generated state
 src/**/bin/

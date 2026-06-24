@@ -1,71 +1,95 @@
 # Wheelbarrow
 
-Prototype 7 Days To Die V3.0 wheelbarrow mod.
+A 7 Days To Die V3.0 mod that adds a craftable, pushable wheelbarrow with storage.
 
-This first pass proves the custom vehicle asset pipeline:
+The wheelbarrow is meant to be a small hand cart: walk behind it, push it around, use it for extra storage, and pick it back up when you are done.
 
-- Blender generates the wheelbarrow source model and FBX.
-- Unity 2022.3.62f2 imports the FBX and builds `wheelbarrow.unity3d`.
-- XML appends a storage-focused vehicle, placeable item, recipe, and localization.
+## Features
 
-The MVP intentionally extends the vanilla bicycle vehicle behavior. It should be
-treated as a slow storage cart first, not the final "walk behind and push it"
-implementation.
+- Craftable wheelbarrow placeable item.
+- Walk-behind push interaction.
+- Built-in storage.
+- Custom item and compass icons.
+- Wheelbarrow-specific interaction prompt.
+- Admin/testing console commands for spawning, cleanup, and diagnostics.
 
-## Paths
+## Requirements
 
-- Deployable mod: `1A-Wheelbarrow`
-- Blender generator: `tools/generate_wheelbarrow_model.py`
-- Unity project: `UnityProject`
-- Asset bundle output: `1A-Wheelbarrow/Resources/wheelbarrow.unity3d`
+- 7 Days To Die V3.0.
+- Easy Anti-Cheat disabled.
 
-## Build
+This mod includes a DLL for the push behavior and console commands, so it is marked with `SkipWithAntiCheat`.
 
-Generate the model:
+For multiplayer, install the mod on the server and on each client that connects.
 
-```powershell
-& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' -b --python tools\generate_wheelbarrow_model.py
+## Install
+
+1. Download or clone this repository.
+2. Copy the `1A-Wheelbarrow` folder into your 7 Days To Die `Mods` folder.
+3. Start the game with Easy Anti-Cheat disabled.
+
+Typical Steam install path:
+
+```text
+C:\Program Files (x86)\Steam\steamapps\common\7 Days To Die\Mods\1A-Wheelbarrow
 ```
 
-Build the Unity asset bundle:
+If the `Mods` folder does not exist, create it.
 
-```powershell
-& 'C:\Program Files\Unity\Hub\Editor\2022.3.62f2\Editor\Unity.exe' -batchmode -quit -projectPath UnityProject -executeMethod BuildWheelbarrowBundle.BuildAll -logFile UnityProject\build-wheelbarrow.log
+## Using The Wheelbarrow
+
+Craft the wheelbarrow at a workbench:
+
+```text
+1x vehicle wheel
+30x wood
+12x forged iron
+2x mechanical parts
+4x leather
 ```
 
-Validate the built bundle:
+Place the wheelbarrow like a vehicle. Look at it and press the interact key when prompted:
 
-```powershell
-& 'C:\Program Files\Unity\Hub\Editor\2022.3.62f2\Editor\Unity.exe' -batchmode -quit -projectPath UnityProject -executeMethod BuildWheelbarrowBundle.ValidateBuiltBundle -logFile UnityProject\validate-wheelbarrow.log
+```text
+( E ) to Push Wheelbarrow
 ```
 
-Install by copying `1A-Wheelbarrow` into the game `Mods` folder.
+Press interact again to release it. Changing toolbelt slots while pushing also releases it before switching items.
 
-For a quick in-game check, use creative search for `Wheelbarrow` or console
-`giveself vehicleWheelbarrowPlaceable`.
+Use the normal vehicle interaction options for storage, pickup, repair, lock, and related actions.
 
-After building the DLL, the faster test command is:
+## Admin Commands
+
+These are mostly for testing or cleanup:
 
 ```text
 wb
-```
-
-Optional distance:
-
-```text
 wb 5
-```
-
-Cleanup spawned test wheelbarrows:
-
-```text
+wb push
+wb drop
 wb cleanup
-```
-
-Log active wheelbarrow renderer state:
-
-```text
 wb debug
 ```
 
-Aliases: `wheelbarrow`, `spawnwheelbarrow`, `wbspawn`.
+Aliases:
+
+```text
+wheelbarrow
+spawnwheelbarrow
+wbspawn
+```
+
+Command behavior:
+
+- `wb` spawns a wheelbarrow in front of you.
+- `wb 5` spawns one 5 meters away.
+- `wb push` starts pushing the nearest active wheelbarrow.
+- `wb drop` releases the pushed wheelbarrow.
+- `wb cleanup` removes active and unloaded wheelbarrow records.
+- `wb debug` logs active wheelbarrow renderer and transform state.
+
+## Current Limitations
+
+This is still a custom vehicle prototype. The wheelbarrow uses 7D2D vehicle systems underneath, with custom code layered on top for walk-behind pushing. Some movement and physics edge cases may still need tuning.
+
+For development notes, build instructions, and asset workflow details, see `CONTRIBUTORS.md`.

@@ -1,0 +1,4 @@
+Key,File,Type,UsedInMainMenu,NoTranslate,KeepLoaded,english
+vehicleWheelbarrowPlaceable,items,Item,,,,Wheelbarrow
+vehiclePlaceableWheelbarrowDesc,items,Item,,,,A rugged hand cart with storage space. This prototype uses slow bicycle-style vehicle behavior.
+

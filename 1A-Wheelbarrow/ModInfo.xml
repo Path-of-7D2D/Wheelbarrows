@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xml>
+	<Name value="Wheelbarrow" />
+	<DisplayName value="Wheelbarrow" />
+	<Description value="Adds a craftable storage wheelbarrow prototype." />
+	<Author value="Path-of-7D2D" />
+	<Version value="0.1.0" />
+	<Website value="https://github.com/Path-of-7D2D/Wheelbarrow" />
+	<!-- The test spawn command ships as a DLL, so the mod must be skipped when
+	     EasyAntiCheat is enabled. -->
+	<SkipWithAntiCheat value="true" />
+</xml>

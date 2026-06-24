@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configs>
+
+	<append xpath="/vehicles">
+		<vehicle name="vehicleWheelbarrow">
+			<property name="cameraDistance" value="3, 4.5"/>
+			<property name="cameraTurnRate" value=".2, .35"/>
+			<property name="upAngleMax" value="45"/>
+			<property name="upForce" value=".35"/>
+			<property name="steerAngleMax" value="24"/>
+			<property name="steerRate" value="95"/>
+			<property name="steerCenteringRate" value="75"/>
+			<property name="tiltAngleMax" value="8"/>
+			<property name="tiltThreshold" value="3"/>
+			<property name="tiltDampening" value=".30"/>
+			<property name="tiltDampenThreshold" value="5"/>
+			<property name="tiltUpForce" value="1.2"/>
+			<property name="motorTorque_turbo" value="220, 90, 300, 110"/>
+			<property name="velocityMax_turbo" value="3.4, 2.1, 4.8, 2.7"/>
+			<property name="brakeTorque" value="2200"/>
+			<property name="hopForce" value=".1, .02"/>
+			<property name="unstickForce" value=".2"/>
+			<property name="waterDrag_y_velScale_velMaxScale" value="1.8, .8, .12"/>
+			<property name="wheelPtlScale" value=".35"/>
+			<property name="hornSound" value="bicycle_horn"/>
+			<property name="recipeName" value="vehicleWheelbarrowPlaceable"/>
+
+			<property class="chassis">
+				<property name="class" value="Chassis"/>
+				<property name="paint" value="M"/>
+			</property>
+
+			<property class="handlebars">
+				<property name="class" value="Steering"/>
+				<property name="transform" value="M/Forks"/>
+				<property name="steerAngle" value="0, 24, 0"/>
+				<property name="IKHandLPosition" value="-.58, .34, -2.34"/>
+				<property name="IKHandLRotation" value="0, 90, 8"/>
+				<property name="IKHandRPosition" value=".58, .34, -2.34"/>
+				<property name="IKHandRRotation" value="0, 90, -8"/>
+				<property name="paint" value="handlebar"/>
+			</property>
+
+			<property class="seat0">
+				<property name="pose" value="1"/>
+				<property name="position" value="0, .20, -1.05"/>
+				<property name="rotation" value="0, 0, 0"/>
+				<property name="exit" value="-.9,0,0 ~ .9,0,0 ~ 0,0,-1.4 ~ 0,0,1.4 ~ 0,1.4,0"/>
+			</property>
+
+			<property class="wheel0">
+				<property name="tireTransform" value="M/Forks/Wheel0"/>
+				<property name="torqueScale_motor_brake" value=".2, .7"/>
+				<property name="bounceSound" value="bicycle_suspension"/>
+				<property name="slideSound" value="bicycle_brake"/>
+			</property>
+
+			<property class="wheel1">
+				<property name="tireTransform" value="Wheel1"/>
+				<property name="torqueScale_motor_brake" value=".8, 1"/>
+				<property name="bounceSound" value="bicycle_suspension"/>
+				<property name="slideSound" value="bicycle_brake"/>
+			</property>
+
+			<property class="storage">
+				<property name="class" value="Storage"/>
+				<property name="mod" value="storage"/>
+				<property name="modT" value="M/Storage"/>
+			</property>
+		</vehicle>
+	</append>
+
+</configs>

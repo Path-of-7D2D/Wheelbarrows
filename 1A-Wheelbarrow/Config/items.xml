@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configs>
+
+	<append xpath="/items">
+		<item name="vehicleWheelbarrowPlaceable">
+			<property name="Extends" value="vehicleBicyclePlaceable"/>
+			<property name="Tags" value="T0,vehicle,vstorage,canHaveCosmetic"/>
+			<property name="DescriptionKey" value="vehiclePlaceableWheelbarrowDesc"/>
+			<property name="CustomIcon" value="vehicleWheelbarrowPlaceable"/>
+			<property name="Meshfile" value="#@modfolder:Resources/wheelbarrow.unity3d?WheelbarrowPrefab.prefab"/>
+			<property name="EconomicValue" value="1800"/>
+			<property name="TraderStageTemplate" value="vehicleTier1"/>
+			<property name="SoundPickup" value="bike_grab"/>
+			<property name="SoundPlace" value="bike_place"/>
+			<property class="Action1">
+				<property name="Vehicle" value="vehicleWheelbarrow"/>
+				<property name="VehicleSize" value="1.1, 1.1, 2.0"/>
+			</property>
+			<effect_group name="vehicleWheelbarrowPlaceable" tiered="false">
+				<passive_effect name="ModSlots" operation="base_set" value="2"/>
+				<passive_effect name="ModPowerBonus" operation="base_add" value="200" tags="EconomicValue"/>
+				<passive_effect name="DegradationMax" operation="base_set" value="1200"/>
+			</effect_group>
+		</item>
+	</append>
+
+</configs>

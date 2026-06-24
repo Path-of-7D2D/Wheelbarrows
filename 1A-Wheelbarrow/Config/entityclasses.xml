@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configs>
+
+	<append xpath="/entity_classes">
+		<entity_class name="vehicleWheelbarrow">
+			<property name="Class" value="EntityBicycle"/>
+			<property name="Tags" value="vehicle"/>
+			<property name="Prefab" value="#@modfolder:Resources/wheelbarrow.unity3d?WheelbarrowPrefab.prefab"/>
+			<property name="PrefabCombined" value="true"/>
+			<property name="ModelType" value="Standard"/>
+			<property name="SurfaceCategory" value="metal"/>
+			<property name="IgnoreTrigger" value="true"/>
+			<property name="LootList" value="vehicleWheelbarrow"/>
+			<property name="IsEnemyEntity" value="false"/>
+			<property class="Explosion">
+				<property name="ParticleIndex" value="25"/>
+				<property name="RadiusBlocks" value="1"/>
+				<property name="RadiusEntities" value="1"/>
+			</property>
+			<property name="RotateToGround" value="true"/>
+			<property name="Faction" value="none"/>
+			<property name="MapIcon" value="ui_game_symbol_wheelbarrow"/>
+			<property name="NavObject" value="wheelbarrow"/>
+		</entity_class>
+	</append>
+
+</configs>

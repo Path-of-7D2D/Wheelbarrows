@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configs>
+
+	<append xpath="/nav_object_classes">
+		<nav_object_class name="wheelbarrow" extends="bicycle">
+			<property name="requirement_type" value="IsVehicleOwner" />
+			<compass_settings>
+				<property name="sprite_name" value="ui_game_symbol_wheelbarrow"/>
+			</compass_settings>
+			<onscreen_settings>
+				<property name="sprite_name" value="ui_game_symbol_wheelbarrow"/>
+			</onscreen_settings>
+		</nav_object_class>
+	</append>
+
+</configs>

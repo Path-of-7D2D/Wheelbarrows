@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configs>
+
+	<append xpath="/recipes">
+		<recipe name="vehicleWheelbarrowPlaceable" count="1" craft_time="25" craft_area="workbench" tags="workbenchCrafting,packMuleCrafting">
+			<ingredient name="vehicleWheels" count="1"/>
+			<ingredient name="resourceWood" count="30"/>
+			<ingredient name="resourceForgedIron" count="12"/>
+			<ingredient name="resourceMechanicalParts" count="2"/>
+			<ingredient name="resourceLeather" count="4"/>
+		</recipe>
+	</append>
+
+</configs>
+

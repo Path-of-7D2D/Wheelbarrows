@@ -2,14 +2,25 @@
 <configs>
 
 	<append xpath="/recipes">
+		<recipe name="vehicleWheelbarrowHandles" count="1" craft_time="5" tags="packMuleCrafting">
+			<ingredient name="resourceWood" count="20"/>
+		</recipe>
+
+		<recipe name="vehicleWheelbarrowFrame" count="1" craft_time="10" craft_area="workbench" tags="workbenchCrafting,packMuleCrafting">
+			<ingredient name="resourceMetalPipe" count="4"/>
+			<ingredient name="resourceScrapIron" count="20"/>
+		</recipe>
+
+		<recipe name="vehicleWheelbarrowHull" count="1" craft_time="15" craft_area="workbench" tags="workbenchCrafting,packMuleCrafting">
+			<ingredient name="resourceScrapIron" count="100"/>
+		</recipe>
+
 		<recipe name="vehicleWheelbarrowPlaceable" count="1" craft_time="25" craft_area="workbench" tags="workbenchCrafting,packMuleCrafting">
 			<ingredient name="vehicleWheels" count="1"/>
-			<ingredient name="resourceWood" count="30"/>
-			<ingredient name="resourceForgedIron" count="12"/>
-			<ingredient name="resourceMechanicalParts" count="2"/>
-			<ingredient name="resourceLeather" count="4"/>
+			<ingredient name="vehicleWheelbarrowHandles" count="1"/>
+			<ingredient name="vehicleWheelbarrowFrame" count="1"/>
+			<ingredient name="vehicleWheelbarrowHull" count="1"/>
 		</recipe>
 	</append>
 
 </configs>
-

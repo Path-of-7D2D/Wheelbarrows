@@ -43,11 +43,24 @@ If the `Mods` folder does not exist, create it.
 Craft the wheelbarrow at a workbench:
 
 ```text
-1x vehicle wheel
-30x wood
-12x forged iron
-2x mechanical parts
-4x leather
+1x Wheel
+1x Wheelbarrow Handles
+1x Wheelbarrow Frame
+1x Wheelbarrow Hull
+```
+
+Wheelbarrow component recipes:
+
+```text
+Wheelbarrow Handles
+- 20x Wood
+
+Wheelbarrow Frame
+- 4x Short Iron Pipe
+- 20x Iron
+
+Wheelbarrow Hull
+- 100x Iron
 ```
 
 Place the wheelbarrow like a vehicle. Look at it and press the interact key when prompted:

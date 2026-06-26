@@ -2,6 +2,12 @@ Key,File,Type,UsedInMainMenu,NoTranslate,KeepLoaded,english
 vehicleWheelbarrow,vehicles,vehicle,,,,Wheelbarrow
 vehicleWheelbarrowPlaceable,items,Item,,,,Wheelbarrow
 vehiclePlaceableWheelbarrowDesc,items,Item,,,,A rugged hand cart with storage space. This prototype uses slow bicycle-style vehicle behavior.
+vehicleWheelbarrowHandles,vehicles,item,,,,Wheelbarrow Handles
+vehicleWheelbarrowHandlesDesc,items,Item,,,,Wooden handles shaped for pushing and steering a wheelbarrow.
+vehicleWheelbarrowFrame,vehicles,item,,,,Wheelbarrow Frame
+vehicleWheelbarrowFrameDesc,items,Item,,,,A simple pipe frame used to support a wheelbarrow hull.
+vehicleWheelbarrowHull,vehicles,item,,,,Wheelbarrow Hull
+vehicleWheelbarrowHullDesc,items,Item,,,,A metal tray body for carrying supplies in a wheelbarrow.
 wheelbarrowTooltipPush,UI,Use Prompt,,,,{0} to Push {1}
 buffWheelbarrowBurdenName,buffs,Buff,,,,Pushing Wheelbarrow
 buffWheelbarrowBurdenDesc,buffs,Buff,,,,Pushing the wheelbarrow slows your movement by at least 5%. Filled storage slots past five increase the slowdown by 1% each.

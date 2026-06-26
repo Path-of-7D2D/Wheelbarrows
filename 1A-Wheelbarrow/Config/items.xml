@@ -2,6 +2,42 @@
 <configs>
 
 	<append xpath="/items">
+		<item name="vehicleWheelbarrowHandles">
+			<property name="Extends" value="partsMaster"/>
+			<property name="CustomIcon" value="vehicleWheelbarrowHandles"/>
+			<property name="Tags" value="vehiclesSkill"/>
+			<property name="DescriptionKey" value="vehicleWheelbarrowHandlesDesc"/>
+			<property name="EconomicValue" value="120"/>
+			<property name="Weight" value="0"/>
+			<property name="Group" value="Science,TCScience"/>
+			<property name="SoundPickup" value="wood_grab"/>
+			<property name="SoundPlace" value="wood_place"/>
+		</item>
+
+		<item name="vehicleWheelbarrowFrame">
+			<property name="Extends" value="partsMaster"/>
+			<property name="CustomIcon" value="vehicleWheelbarrowFrame"/>
+			<property name="Tags" value="vehiclesSkill"/>
+			<property name="DescriptionKey" value="vehicleWheelbarrowFrameDesc"/>
+			<property name="EconomicValue" value="220"/>
+			<property name="Weight" value="0"/>
+			<property name="Group" value="Science,TCScience"/>
+			<property name="SoundPickup" value="ironpipe_grab"/>
+			<property name="SoundPlace" value="ironpipe_place"/>
+		</item>
+
+		<item name="vehicleWheelbarrowHull">
+			<property name="Extends" value="partsMaster"/>
+			<property name="CustomIcon" value="vehicleWheelbarrowHull"/>
+			<property name="Tags" value="vehiclesSkill"/>
+			<property name="DescriptionKey" value="vehicleWheelbarrowHullDesc"/>
+			<property name="EconomicValue" value="350"/>
+			<property name="Weight" value="0"/>
+			<property name="Group" value="Science,TCScience"/>
+			<property name="SoundPickup" value="scrapiron_grab"/>
+			<property name="SoundPlace" value="scrapiron_place"/>
+		</item>
+
 		<item name="vehicleWheelbarrowPlaceable">
 			<property name="Extends" value="vehicleBicyclePlaceable"/>
 			<property name="Tags" value="T0,vehicle,vstorage,canHaveCosmetic"/>

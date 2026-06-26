@@ -3,3 +3,6 @@ vehicleWheelbarrow,vehicles,vehicle,,,,Wheelbarrow
 vehicleWheelbarrowPlaceable,items,Item,,,,Wheelbarrow
 vehiclePlaceableWheelbarrowDesc,items,Item,,,,A rugged hand cart with storage space. This prototype uses slow bicycle-style vehicle behavior.
 wheelbarrowTooltipPush,UI,Use Prompt,,,,{0} to Push {1}
+buffWheelbarrowBurdenName,buffs,Buff,,,,Pushing Wheelbarrow
+buffWheelbarrowBurdenDesc,buffs,Buff,,,,Pushing the wheelbarrow slows your movement by at least 5%. Filled storage slots past five increase the slowdown by 1% each.
+buffWheelbarrowBurdenTooltip,buffs,Buff,,,,The loaded wheelbarrow is slowing you down.

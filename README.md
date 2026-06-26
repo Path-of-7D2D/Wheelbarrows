@@ -9,6 +9,8 @@ The wheelbarrow is meant to be a small hand cart: walk behind it, push it around
 - Craftable wheelbarrow placeable item.
 - Walk-behind push interaction.
 - Built-in storage.
+- Movement slowdown while pushing, based on how full the wheelbarrow is.
+- Visible wheelbarrow burden debuff while pushing.
 - Custom item and compass icons.
 - Wheelbarrow-specific interaction prompt.
 - Admin/testing console commands for spawning, cleanup, and diagnostics.
@@ -55,6 +57,10 @@ Place the wheelbarrow like a vehicle. Look at it and press the interact key when
 ```
 
 Press interact again to release it. Changing toolbelt slots while pushing also releases it before switching items.
+
+While pushing, your movement speed is reduced by at least 5%. The slowdown increases as the wheelbarrow fills up: every filled storage slot past the first five adds another 1% slowdown. For example, three filled slots still slows you by 5%, while nine filled slots slows you by 9%.
+
+A `Pushing Wheelbarrow` debuff appears while you are pushing and shows the current movement penalty.
 
 Use the normal vehicle interaction options for storage, pickup, repair, lock, and related actions.
 

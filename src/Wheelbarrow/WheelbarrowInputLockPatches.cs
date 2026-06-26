@@ -27,6 +27,7 @@ namespace Wheelbarrow
             if (PushLock.LocksLocalPlayer(__instance) && __instance.movementInput != null)
             {
                 __instance.movementInput.jump = false;
+                WheelbarrowPush.ApplyMovementPenalty(__instance);
             }
         }
     }

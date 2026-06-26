@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configs>
+	<append xpath="/buffs">
+		<buff name="buffWheelbarrowBurden" name_key="buffWheelbarrowBurdenName" description_key="buffWheelbarrowBurdenDesc" tooltip_key="buffWheelbarrowBurdenTooltip" icon="ui_game_symbol_wheelbarrow" icon_color="255,210,80" remove_on_death="true">
+			<stack_type value="replace"/>
+			<duration value="0"/>
+			<display_value value=".wheelbarrowMovePenaltyDisplay"/>
+			<display_value_key value="-{0:0}%"/>
+			<effect_group>
+				<triggered_effect trigger="onSelfEnteredGame" action="RemoveBuff" buff="buffWheelbarrowBurden"/>
+			</effect_group>
+		</buff>
+	</append>
+</configs>

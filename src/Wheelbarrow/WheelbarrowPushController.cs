@@ -32,6 +32,12 @@ namespace Wheelbarrow
         internal const float MaxTurnOffset = 50f;          // nose may lag at most this far from your facing
         internal const float ToggleGuard = 0.25f;          // debounce so one keypress can't grab+drop
         internal const float ReleaseRollVelocity = 0.9f;   // rad/sec roll nudge after releasing physics
+        internal const string BurdenBuffName = "buffWheelbarrowBurden";
+        internal const string BurdenPenaltyCVar = ".wheelbarrowMovePenaltyDisplay";
+        internal const int FreeFilledSlots = 5;
+        internal const float BaseMovePenalty = 0.05f;
+        internal const float PerFilledSlotPenalty = 0.01f;
+        internal const float MaxMovePenalty = 0.75f;
 
         // Hand IK rotation offset applied on top of each grip's orientation (tune if palms look twisted).
         private static readonly Vector3 HandEuler = new Vector3(0f, 0f, 0f);
@@ -40,6 +46,8 @@ namespace Wheelbarrow
         internal static float FrontOffset = DefaultFrontOffset;
         internal static float HeightLift = DefaultHeightLift;
         internal static float TiltDegrees = DefaultTiltDegrees;
+        internal static float CurrentMovePenalty { get; private set; }
+        internal static int CurrentFilledSlots { get; private set; }
 
         private static Vector3 lastCartPos;
         private static bool hasLastPos;
@@ -69,6 +77,18 @@ namespace Wheelbarrow
         internal static bool ShouldLockLocalPlayer(EntityPlayerLocal player)
         {
             return ValidateActiveState(player, true);
+        }
+
+        internal static void ApplyMovementPenalty(EntityPlayerLocal player)
+        {
+            if (player == null || player.movementInput == null)
+            {
+                return;
+            }
+
+            float scale = Mathf.Clamp01(1f - CurrentMovePenalty);
+            player.movementInput.moveForward *= scale;
+            player.movementInput.moveStrafe *= scale;
         }
 
         // Start pushing using the current (possibly console-tuned) stance values.
@@ -140,6 +160,7 @@ namespace Wheelbarrow
             lastBeginTime = Time.unscaledTime;
 
             FreezePhysics(vehicle, true);
+            UpdateBurden(GetPrimaryPlayer(), vehicle);
 
             // Defer hand IK to the first Tick, once the cart is glued in front of the
             // player, so we can read the grips' real world positions to pick sides.
@@ -150,6 +171,7 @@ namespace Wheelbarrow
         {
             EntityVehicle vehicle = Current;
             float releaseYaw = hasLastPushYaw ? lastPushYaw : GetVehicleYaw(vehicle);
+            ClearBurden(GetPrimaryPlayer());
             Current = null;
             hasLastPos = false;
             pendingIKSetup = false;
@@ -183,6 +205,8 @@ namespace Wheelbarrow
             {
                 return;
             }
+
+            UpdateBurden(player, vehicle);
 
             // Smoothly chase the player's heading with a capped turn rate, so the cart
             // swings/trails into corners instead of snapping rigidly to face them.
@@ -495,6 +519,63 @@ namespace Wheelbarrow
         private static float GetReleaseRollSign(EntityVehicle vehicle)
         {
             return (vehicle.entityId & 1) == 0 ? 1f : -1f;
+        }
+
+        private static EntityPlayerLocal GetPrimaryPlayer()
+        {
+            World world = GameManager.Instance != null ? GameManager.Instance.World : null;
+            return world != null ? world.GetPrimaryPlayer() : null;
+        }
+
+        private static void UpdateBurden(EntityPlayerLocal player, EntityVehicle vehicle)
+        {
+            if (player == null || vehicle == null)
+            {
+                ClearBurden(player);
+                return;
+            }
+
+            CurrentFilledSlots = CountFilledStorageSlots(vehicle);
+            CurrentMovePenalty = CalculateMovePenalty(CurrentFilledSlots);
+            player.SetCVar(BurdenPenaltyCVar, Mathf.Round(CurrentMovePenalty * 100f));
+
+            if (player.Buffs != null && !player.Buffs.HasBuff(BurdenBuffName))
+            {
+                player.Buffs.AddBuff(BurdenBuffName);
+            }
+        }
+
+        private static void ClearBurden(EntityPlayerLocal player)
+        {
+            CurrentFilledSlots = 0;
+            CurrentMovePenalty = 0f;
+
+            if (player == null)
+            {
+                return;
+            }
+
+            player.SetCVar(BurdenPenaltyCVar, 0f);
+            if (player.Buffs != null && player.Buffs.HasBuff(BurdenBuffName))
+            {
+                player.Buffs.RemoveBuff(BurdenBuffName);
+            }
+        }
+
+        private static float CalculateMovePenalty(int filledSlots)
+        {
+            int loadedSlots = Mathf.Max(filledSlots, FreeFilledSlots);
+            return Mathf.Clamp(loadedSlots * PerFilledSlotPenalty, BaseMovePenalty, MaxMovePenalty);
+        }
+
+        private static int CountFilledStorageSlots(EntityVehicle vehicle)
+        {
+            if (vehicle == null || vehicle.bag == null)
+            {
+                return 0;
+            }
+
+            return vehicle.bag.GetUsedSlotCount();
         }
 
         private static void SnapToGround(ref Vector3 position)

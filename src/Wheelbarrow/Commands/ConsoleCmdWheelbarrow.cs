@@ -87,6 +87,31 @@ namespace Wheelbarrow.Commands
                 return;
             }
 
+            if (_params.Count > 0 && (IsSubcommand(_params[0], "hands") || IsSubcommand(_params[0], "handpos")))
+            {
+                bool pos = IsSubcommand(_params[0], "handpos");
+                if (_params.Count >= 4 &&
+                    float.TryParse(_params[1], out float hx) &&
+                    float.TryParse(_params[2], out float hy) &&
+                    float.TryParse(_params[3], out float hz))
+                {
+                    if (pos)
+                    {
+                        WheelbarrowPush.HandOffset = new Vector3(hx, hy, hz);
+                    }
+                    else
+                    {
+                        WheelbarrowPush.HandEuler = new Vector3(hx, hy, hz);
+                    }
+
+                    WheelbarrowPush.RefreshHandIK();
+                }
+
+                Output("Hand rot=" + Format(WheelbarrowPush.HandEuler) + " offset=" + Format(WheelbarrowPush.HandOffset) +
+                    (WheelbarrowPush.IsActive ? "" : " (push a cart to see it update)"));
+                return;
+            }
+
             float distance = DefaultDistance;
             if (_params.Count > 0 && !float.TryParse(_params[0], out distance))
             {

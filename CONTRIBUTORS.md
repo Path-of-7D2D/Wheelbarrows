@@ -9,7 +9,7 @@ This document is for anyone modifying or rebuilding the Wheelbarrow mod. The con
 - `1A-Wheelbarrow/Resources/wheelbarrow.unity3d` - built Unity asset bundle.
 - `1A-Wheelbarrow/Wheelbarrow.dll` - built gameplay/command DLL.
 - `src/Wheelbarrow/` - C# source for Harmony patches, commands, visual repair, and push behavior.
-- `tools/generate_wheelbarrow_model.py` - Blender model generator.
+- `tools/import_artist_wheelbarrow.py` - imports the artist wheelbarrow FBX, orients/scales/rigs it, and exports the project FBX.
 - `UnityProject/` - Unity project used to build the wheelbarrow prefab and asset bundle.
 
 ## Tooling
@@ -34,10 +34,10 @@ Open the `UnityProject` folder directly in Unity Hub. Do not try to import the r
 
 Run commands from the repository root.
 
-Generate the Blender model and FBX:
+Import/rig the artist model into the project FBX (set `SOURCE_FBX` in the script to the artist's `wheelbarrow_LOD0.fbx`):
 
 ```powershell
-& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' -b --python tools\generate_wheelbarrow_model.py
+& 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' -b --python tools\import_artist_wheelbarrow.py
 ```
 
 Build the Unity asset bundle:

@@ -25,7 +25,7 @@ namespace Wheelbarrow
         internal const float DefaultHeightLift = 0.2f;     // raise the cart so handles reach hand height
         internal const float DefaultTiltDegrees = 15f;     // forward tilt onto the wheel (rear legs lift)
         internal const float GroundClearance = 0.06f;
-        internal const float WheelRadius = 0.32f;          // matches generate_wheelbarrow_model.py
+        internal const float WheelRadius = 0.235f;         // artist wheel ~0.47m diameter
         internal const float YawOffset = 0f;               // cart-forward vs entity-forward (model faces +Z)
         internal const float TurnSmoothTime = 0.22f;       // higher = lazier turning
         internal const float TurnMaxRate = 120f;           // deg/sec cap on how fast the cart can swing
@@ -39,8 +39,10 @@ namespace Wheelbarrow
         internal const float PerFilledSlotPenalty = 0.01f;
         internal const float MaxMovePenalty = 0.75f;
 
-        // Hand IK rotation offset applied on top of each grip's orientation (tune if palms look twisted).
-        private static readonly Vector3 HandEuler = new Vector3(0f, 0f, 0f);
+        // Hand IK rotation/offset in grip-local space — tune live with `wb hands x y z`
+        // and `wb handpos x y z`. The left hand is mirrored across the cart centreline.
+        internal static Vector3 HandEuler = new Vector3(0f, 180f, 0f);
+        internal static Vector3 HandOffset = Vector3.zero;
 
         internal static EntityVehicle Current { get; private set; }
         internal static float FrontOffset = DefaultFrontOffset;
@@ -316,8 +318,8 @@ namespace Wheelbarrow
             Transform leftGrip = sideA <= sideB ? gripA : gripB;
             Transform rightGrip = sideA <= sideB ? gripB : gripA;
 
-            handTargetL = MakeHandTarget("WB_HandTargetL", leftGrip);
-            handTargetR = MakeHandTarget("WB_HandTargetR", rightGrip);
+            handTargetL = MakeHandTarget("WB_HandTargetL", leftGrip, isLeft: true);
+            handTargetR = MakeHandTarget("WB_HandTargetR", rightGrip, isLeft: false);
 
             List<IKController.Target> targets = new List<IKController.Target>
             {
@@ -329,13 +331,38 @@ namespace Wheelbarrow
             ikApplied = true;
         }
 
-        private static Transform MakeHandTarget(string name, Transform grip)
+        private static Transform MakeHandTarget(string name, Transform grip, bool isLeft)
         {
             GameObject go = new GameObject(name);
             go.transform.SetParent(grip, worldPositionStays: false);
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localRotation = Quaternion.Euler(HandEuler);
+
+            Vector3 offset = HandOffset;
+            Vector3 euler = HandEuler;
+            if (isLeft)
+            {
+                offset.x = -offset.x; // mirror across the cart centreline
+                euler = new Vector3(euler.x, -euler.y, -euler.z);
+            }
+
+            go.transform.localPosition = offset;
+            go.transform.localRotation = Quaternion.Euler(euler);
             return go.transform;
+        }
+
+        // Re-pin the hands using the current HandEuler/HandOffset (for live console tuning).
+        internal static void RefreshHandIK()
+        {
+            if (!IsActive)
+            {
+                return;
+            }
+
+            World world = GameManager.Instance != null ? GameManager.Instance.World : null;
+            EntityPlayerLocal player = world != null ? world.GetPrimaryPlayer() : null;
+            if (player != null)
+            {
+                SetupHandIK(Current, player);
+            }
         }
 
         private static void ClearHandIK()

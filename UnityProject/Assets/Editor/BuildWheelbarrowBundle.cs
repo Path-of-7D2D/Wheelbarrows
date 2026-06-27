@@ -43,6 +43,39 @@ public static class BuildWheelbarrowBundle
         BuildAll();
     }
 
+    // Diagnostic: instantiate the built prefab and log every renderer's path, active
+    // state, world bounds and lossy scale, so we can see where the wheel ended up.
+    public static void DumpModel()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+        if (prefab == null)
+        {
+            throw new FileNotFoundException($"Missing prefab at {PrefabPath}");
+        }
+
+        GameObject inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+        try
+        {
+            foreach (Renderer r in inst.GetComponentsInChildren<Renderer>(true))
+            {
+                Transform t = r.transform;
+                string path = t.name;
+                for (Transform p = t.parent; p != null; p = p.parent)
+                {
+                    path = p.name + "/" + path;
+                }
+
+                Debug.Log($"RENDERER {path} active={r.gameObject.activeInHierarchy} " +
+                    $"mat={(r.sharedMaterial != null ? r.sharedMaterial.name : "<none>")} " +
+                    $"lossyScale={t.lossyScale} boundsCenter={r.bounds.center} boundsSize={r.bounds.size}");
+            }
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(inst);
+        }
+    }
+
     public static void ValidateBuiltBundle()
     {
         string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
@@ -193,6 +226,7 @@ public static class BuildWheelbarrowBundle
         }
 
         EnsureVehicleTransforms(mesh.transform);
+        RigArtistModel(mesh.transform);
         ApplyRustMaterials(mesh.transform);
         RemoveRootCollider(instance);
         RemoveRootCollider(modelRoot);
@@ -230,14 +264,14 @@ public static class BuildWheelbarrowBundle
         }
     }
 
-    // Replaces the FBX's flat placeholder materials with weathered/rusted Standard
-    // materials built from tools/generate_textures.py output, matched by original name.
+    // Builds Standard materials from the artist's vanilla 7D2D texture sets and assigns
+    // them to the imported meshes, matched by FBX material name.
     private static void ApplyRustMaterials(Transform meshRoot)
     {
         Dictionary<string, Material> map = BuildRustMaterials();
         if (map.Count == 0)
         {
-            Debug.LogWarning("Rust textures not found; keeping placeholder materials. Run tools/generate_textures.py.");
+            Debug.LogWarning("Wheelbarrow textures not found in Assets/Wheelbarrow/Textures; keeping imported materials.");
             return;
         }
 
@@ -274,32 +308,29 @@ public static class BuildWheelbarrowBundle
     {
         var map = new Dictionary<string, Material>();
 
-        Texture2D metal = ImportTexture("wb_metal_albedo.png", isNormal: false);
-        Texture2D red = ImportTexture("wb_red_albedo.png", isNormal: false);
-        Texture2D wood = ImportTexture("wb_wood_albedo.png", isNormal: false);
-        Texture2D rubber = ImportTexture("wb_rubber_albedo.png", isNormal: false);
-        Texture2D normal = ImportTexture("wb_metal_normal.png", isNormal: true);
-
-        if (metal == null || red == null)
-        {
-            return map;
-        }
-
         if (!AssetDatabase.IsValidFolder(MaterialsDir))
         {
             AssetDatabase.CreateFolder("Assets/Wheelbarrow", "Materials");
         }
 
-        // original FBX material name -> rusted replacement
-        map["dark_worn_metal"] = MakeMaterial("WB_Metal", metal, normal, 0.30f, 0.30f, 1.00f);
-        map["weathered_red_metal"] = MakeMaterial("WB_Red", red, normal, 0.12f, 0.34f, 1.00f);
-        map["dark_red_worn_edges"] = MakeMaterial("WB_RedDark", red, normal, 0.18f, 0.24f, 0.78f);
-        map["matte_black_rubber"] = MakeMaterial("WB_Rubber", rubber, null, 0.00f, 0.16f, 1.00f);
-        map["worn_handle_wood"] = MakeMaterial("WB_Wood", wood, null, 0.00f, 0.20f, 1.00f);
+        // Artist model materials: vanilla 7D2D texture sets matched by FBX material name.
+        Texture2D miniBike = ImportTexture("minibike.tga", isNormal: false, maxSize: 2048);
+        Texture2D miniBikeN = ImportTexture("minibike_n.tga", isNormal: true, maxSize: 2048);
+        Texture2D banditWall = ImportTexture("banditWallMetal.tga", isNormal: false, maxSize: 2048);
+        Texture2D banditWallN = ImportTexture("banditWallMetal_n.tga", isNormal: true, maxSize: 2048);
+        if (miniBike != null)
+        {
+            map["miniBike"] = MakeMaterial("WB_MiniBike", miniBike, miniBikeN, 0.55f, 0.40f, 1.00f);
+        }
+        if (banditWall != null)
+        {
+            map["banditWallMetal"] = MakeMaterial("WB_BanditWall", banditWall, banditWallN, 0.55f, 0.35f, 1.00f);
+        }
+
         return map;
     }
 
-    private static Texture2D ImportTexture(string fileName, bool isNormal)
+    private static Texture2D ImportTexture(string fileName, bool isNormal, int maxSize = 0)
     {
         string path = TexturesDir + "/" + fileName;
         if (!File.Exists(path))
@@ -333,6 +364,13 @@ public static class BuildWheelbarrowBundle
             if (importer.wrapMode != TextureWrapMode.Repeat)
             {
                 importer.wrapMode = TextureWrapMode.Repeat;
+                dirty = true;
+            }
+
+            // Cap large vanilla atlases so the bundle stays a sane size.
+            if (maxSize > 0 && importer.maxTextureSize != maxSize)
+            {
+                importer.maxTextureSize = maxSize;
                 dirty = true;
             }
 
@@ -396,6 +434,138 @@ public static class BuildWheelbarrowBundle
         }
 
         return bounds;
+    }
+
+    // The artist FBX ships as M/{hull, frame, wheel} (shallow, so the meshes keep their
+    // scale). Build the deeper vehicle rig here in Unity, where empties are clean
+    // scale-1: drop Forks/Wheel0 onto the wheel and slot the wheel mesh under them so
+    // it can spin, place Storage on the tub, and add hand-IK grips at the handle ends.
+    private static void RigArtistModel(Transform meshRoot)
+    {
+        Transform m = meshRoot.Find("M");
+        if (m == null)
+        {
+            return;
+        }
+
+        Transform wheel = FindByNameContains(meshRoot, "wheel_lod");
+        Transform frame = FindByNameContains(meshRoot, "chasis") ?? FindByNameContains(meshRoot, "frame");
+        Transform hull = FindByNameContains(meshRoot, "hull");
+        if (wheel == null && frame == null && hull == null)
+        {
+            return; // not the artist model (procedural pipeline)
+        }
+
+        if (wheel != null)
+        {
+            Transform forks = EnsureTransform(meshRoot, "M/Forks");
+            Transform wheel0 = EnsureTransform(meshRoot, "M/Forks/Wheel0");
+            Vector3 wc = RendererCenter(wheel);
+            forks.position = wc;
+            forks.rotation = m.rotation;
+            wheel0.position = wc;
+            wheel0.rotation = m.rotation;
+            wheel.SetParent(wheel0, worldPositionStays: true);
+        }
+
+        if (hull != null)
+        {
+            Transform storage = EnsureTransform(meshRoot, "M/Storage");
+            storage.position = RendererCenter(hull);
+        }
+
+        if (frame != null)
+        {
+            ComputeHandleGrips(frame, out Vector3 gripL, out Vector3 gripR);
+            CreateGrip(m, "Grip_Left_End", gripL);
+            CreateGrip(m, "Grip_Right_End", gripR);
+        }
+    }
+
+    private static Vector3 RendererCenter(Transform t)
+    {
+        Renderer r = t.GetComponent<Renderer>();
+        return r != null ? r.bounds.center : t.position;
+    }
+
+    // Rear handle ends = frame verts at min Z (handles point to -Z), split left/right.
+    private static void ComputeHandleGrips(Transform frame, out Vector3 gripL, out Vector3 gripR)
+    {
+        gripL = frame.position;
+        gripR = frame.position;
+        MeshFilter mf = frame.GetComponent<MeshFilter>();
+        Mesh mesh = mf != null ? mf.sharedMesh : null;
+        if (mesh == null)
+        {
+            return;
+        }
+
+        Vector3[] verts = mesh.vertices;
+        float minZ = float.MaxValue;
+        for (int i = 0; i < verts.Length; i++)
+        {
+            float z = frame.TransformPoint(verts[i]).z;
+            if (z < minZ)
+            {
+                minZ = z;
+            }
+        }
+
+        float cut = minZ + 0.20f;
+        float centerX = RendererCenter(frame).x;
+        Vector3 sumL = Vector3.zero, sumR = Vector3.zero;
+        int nL = 0, nR = 0;
+        for (int i = 0; i < verts.Length; i++)
+        {
+            Vector3 w = frame.TransformPoint(verts[i]);
+            if (w.z > cut)
+            {
+                continue;
+            }
+
+            if (w.x < centerX)
+            {
+                sumL += w;
+                nL++;
+            }
+            else
+            {
+                sumR += w;
+                nR++;
+            }
+        }
+
+        if (nL > 0)
+        {
+            gripL = sumL / nL;
+        }
+
+        if (nR > 0)
+        {
+            gripR = sumR / nR;
+        }
+    }
+
+    private static void CreateGrip(Transform parent, string name, Vector3 worldPos)
+    {
+        Transform existing = parent.Find(name);
+        GameObject go = existing != null ? existing.gameObject : new GameObject(name);
+        go.transform.SetParent(parent, worldPositionStays: false);
+        go.transform.position = worldPos;
+        go.transform.rotation = parent.rotation;
+    }
+
+    private static Transform FindByNameContains(Transform root, string nameLower)
+    {
+        foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name.ToLowerInvariant().Contains(nameLower))
+            {
+                return t;
+            }
+        }
+
+        return null;
     }
 
     private static void EnsureVehicleTransforms(Transform root)

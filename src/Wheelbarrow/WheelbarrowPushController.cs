@@ -21,7 +21,7 @@ namespace Wheelbarrow
     internal static class WheelbarrowPush
     {
         // Tunables — defaults are starting points; dial in-game via `wb push`.
-        internal const float DefaultFrontOffset = 1.6f;    // metres in front of the player (user-confirmed)
+        internal const float DefaultFrontOffset = 1.25f;   // cart root offset; tilted grip ends sit close enough for bent elbows
         internal const float DefaultHeightLift = 0.2f;     // raise the cart so handles reach hand height
         internal const float DefaultTiltDegrees = 15f;     // forward tilt onto the wheel (rear legs lift)
         internal const float GroundClearance = 0.06f;
@@ -41,8 +41,8 @@ namespace Wheelbarrow
 
         // Hand IK rotation/offset in grip-local space — tune live with `wb hands x y z`
         // and `wb handpos x y z`. The left hand is mirrored across the cart centreline.
-        internal static Vector3 HandEuler = new Vector3(0f, 180f, 0f);
-        internal static Vector3 HandOffset = Vector3.zero;
+        internal static Vector3 HandEuler = new Vector3(8f, 170f, 14f);
+        internal static Vector3 HandOffset = new Vector3(0.05f, 0.03f, -0.08f);
 
         internal static EntityVehicle Current { get; private set; }
         internal static float FrontOffset = DefaultFrontOffset;

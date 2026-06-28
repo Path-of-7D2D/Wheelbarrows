@@ -33,6 +33,8 @@ namespace Wheelbarrow.Commands
             return "Usage:\n" +
                 "  wb [distance]      spawn a test cart\n" +
                 "  wb push [offset] [lift] [tilt]   push nearest cart (walk-behind)\n" +
+                "  wb hands x y z     tune grip rotation while pushing\n" +
+                "  wb handpos x y z   tune grip-local hand offset while pushing\n" +
                 "  wb drop            release the pushed cart\n" +
                 "  wb cleanup\n" +
                 "  wb debug\n" +
@@ -41,7 +43,9 @@ namespace Wheelbarrow.Commands
                 "Examples:\n" +
                 "  wb\n" +
                 "  wb push\n" +
-                "  wb push 1.6 0.2 15\n" +
+                "  wb push 1.25 0.2 15\n" +
+                "  wb hands 8 170 14\n" +
+                "  wb handpos 0.05 0.03 -0.08\n" +
                 "  wb drop\n" +
                 "  wb cleanup";
         }

@@ -68,7 +68,7 @@ When XML, localization, icons, or the asset bundle change, copy the full `1A-Whe
 wb
 wb 5
 wb push
-wb push 1.6 0.2 15
+wb push 1.25 0.2 15
 wb drop
 wb cleanup
 wb debug

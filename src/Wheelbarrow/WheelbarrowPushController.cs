@@ -187,6 +187,7 @@ namespace Wheelbarrow
             {
                 PrepareReleasedVehicle(vehicle, releaseYaw);
                 FreezePhysics(vehicle, false);
+                ReactivateReleasedPhysics(vehicle);
                 NudgeReleasedVehicle(vehicle);
             }
         }
@@ -422,6 +423,14 @@ namespace Wheelbarrow
 
         private static void FreezePhysics(EntityVehicle vehicle, bool frozen)
         {
+            if (frozen)
+            {
+                vehicle.RBActive = false;
+                vehicle.RBNoDriverGndTime = 0f;
+                vehicle.RBNoDriverSleepTime = 0f;
+                vehicle.isTryToFall = false;
+            }
+
             Rigidbody rb = vehicle.vehicleRB;
             if (rb != null)
             {
@@ -450,6 +459,25 @@ namespace Wheelbarrow
                     box.enabled = !frozen;
                 }
             }
+        }
+
+        private static void ReactivateReleasedPhysics(EntityVehicle vehicle)
+        {
+            Rigidbody rb = vehicle != null ? vehicle.vehicleRB : null;
+            if (rb == null || vehicle.isEntityRemote)
+            {
+                return;
+            }
+
+            vehicle.RBActive = true;
+            vehicle.RBNoDriverGndTime = 0f;
+            vehicle.RBNoDriverSleepTime = 0f;
+            vehicle.isTryToFall = false;
+            rb.isKinematic = false;
+            rb.WakeUp();
+
+            // Match the vanilla wake path used by VehicleManager.PhysicsWakeNear.
+            vehicle.AddForce(Vector3.zero);
         }
 
         private static void PrepareReleasedVehicle(EntityVehicle vehicle, float yaw)
